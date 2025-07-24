@@ -1,0 +1,11 @@
+langchain
+langchain-core
+langchain-community
+langchain-openai
+openai
+streamlit
+python-dotenv
+numpy 
+faiss-cpu
+pypdf
+langgraph
