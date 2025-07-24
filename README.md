@@ -1,1 +1,1 @@
-# EduAI: AI - Tutor
+# EduAI-Tutor
