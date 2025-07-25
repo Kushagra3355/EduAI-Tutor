@@ -14,8 +14,18 @@ Backend: FastAPI
 AI/ML: OpenAI GPT-4o-mini, LangChain, LangGraph
 
 Architecture:
+
 The application uses a graph-based approach with LangGraph for processing workflows:
 
 Document Ingestion: PDFs are chunked and embedded into a FAISS vector store
 Query Processing: User queries are processed through retrieval-augmented generation (RAG)
 Content Generation: Three specialized modules handle different educational tasks
+
+Future Enhancements:
+
+-Support for multiple document formats (DOCX, TXT, etc.)
+-Web interface for easier interaction
+-Advanced question difficulty levels
+-Export functionality for notes and MCQs
+-Multi-language support
+-User authentication and document management
