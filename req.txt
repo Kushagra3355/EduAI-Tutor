@@ -9,3 +9,8 @@ numpy
 faiss-cpu
 pypdf
 langgraph
+
+fastapi
+uvicorn
+PyPDF2
+python-multipart
