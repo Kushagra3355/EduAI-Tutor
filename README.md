@@ -8,11 +8,6 @@ Features:
 4. Study Notes Creation: Convert PDF content into well-structured, bullet-pointed study notes
 5. Vector-based Search: Uses FAISS for efficient similarity search and content retrieval
 
-Tech Stack:
-
-Backend: FastAPI
-AI/ML: OpenAI GPT-4o-mini, LangChain, LangGraph
-
 Architecture:
 
 The application uses a graph-based approach with LangGraph for processing workflows:
