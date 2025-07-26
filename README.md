@@ -23,9 +23,6 @@ Content Generation: Three specialized modules handle different educational tasks
 
 Future Enhancements:
 
--Support for multiple document formats (DOCX, TXT, etc.)
--Web interface for easier interaction
--Advanced question difficulty levels
--Export functionality for notes and MCQs
+-FastAPI for backend
 -Multi-language support
--User authentication and document management
+
