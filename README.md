@@ -21,3 +21,8 @@ Future Enhancements:
 -FastAPI for backend
 -Multi-language support
 
+How to run:
+
+1. Download the repo in your systems
+2. Add your OpenAI API key in the .env file
+3. In the terminal window hit - > "streamlit run main.py"
