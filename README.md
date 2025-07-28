@@ -1,4 +1,7 @@
 # EduAI-Tutor
+
+AI Study Assistant
+
 An intelligent AI-powered educational assistant that transforms PDF documents into interactive learning experiences. Upload study materials and get instant Q&A, auto-generated MCQs, and comprehensive study notes.
 Features:
 
