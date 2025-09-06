@@ -15,7 +15,7 @@ class notes_generator:
 
     def __init__(
         self,
-        llm_model: str = "gpt-4o-mini",
+        llm_model: str = "gpt-5",
         faiss_path: str = "faiss_index_local",
         embed_model: str = "text-embedding-3-small",
     ):
@@ -79,3 +79,4 @@ Now generate the notes below:
 
     def run(self, state: GraphState) -> GraphState:
         return self.graph.invoke(state)
+
