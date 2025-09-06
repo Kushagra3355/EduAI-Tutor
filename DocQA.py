@@ -17,7 +17,7 @@ class DocumentQA:
 
     def __init__(
         self,
-        llm_model: str = "gpt-4o-mini",
+        llm_model: str = "gpt-5",
         faiss_path: str = "faiss_index_local",
         embed_model: str = "text-embedding-3-small",
     ):
@@ -82,3 +82,4 @@ class DocumentQA:
     def run(self, query: str, state: GraphState) -> GraphState:
         state["query"] = query
         return self.graph.invoke(state)
+
