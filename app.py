@@ -6,6 +6,7 @@ from build_vectorstore import embed_docs
 from DocQA import DocumentQA
 from MCQs import mcqs_generator
 from Notes import notes_generator
+from database import DatabaseManager
 
 st.set_page_config(
     page_title="EduAI - AI-Powered Learning Assistant",
@@ -97,27 +98,23 @@ st.markdown(
         border: 1px solid #f59e0b;
         font-weight: 600;
     }
-    .nav-button {
-        width: 100%;
-        margin: 0.5rem 0;
-        padding: 1rem;
+    .session-item {
         background-color: #374151;
-        color: #f9fafb;
-        border: 1px solid #4b5563;
+        padding: 0.75rem;
+        margin: 0.5rem 0;
         border-radius: 6px;
-        text-align: left;
+        border: 1px solid #4b5563;
         cursor: pointer;
-        font-size: 1rem;
-        font-weight: 500;
+        transition: all 0.2s;
     }
-    .nav-button:hover {
+    .session-item:hover {
         background-color: #4b5563;
+        border-color: #3b82f6;
     }
-    .nav-button.active {
-        background-color: #3b82f6;
-        border-color: #2563eb;
+    .session-item.active {
+        background-color: #1e3a8a;
+        border-color: #3b82f6;
     }
-    /* Override Streamlit default styles */
     .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, div {
         color: #f9fafb !important;
     }
@@ -129,19 +126,66 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if "vectorstore_ready" not in st.session_state:
-    st.session_state.vectorstore_ready = False
-if "chat_state" not in st.session_state:
-    st.session_state.chat_state = None
-if "qa_system" not in st.session_state:
+# Initialize database
+if "db_manager" not in st.session_state:
+    st.session_state.db_manager = DatabaseManager()
+
+# Initialize session state from database
+if "initialized" not in st.session_state:
+    st.session_state.initialized = True
+
+    # Load app state from database
+    app_state = st.session_state.db_manager.get_app_state()
+    if app_state:
+        st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
+        st.session_state.chat_state = app_state["chat_state"]
+    else:
+        st.session_state.vectorstore_ready = False
+        st.session_state.chat_state = None
+
     st.session_state.qa_system = None
-if "current_page" not in st.session_state:
     st.session_state.current_page = "Upload Documents"
+    st.session_state.messages_loaded = False
+    st.session_state.show_session_manager = False
+
+
+def load_messages_from_db():
+    """Load messages from database into session state"""
+    if not st.session_state.messages_loaded:
+        conversation_history = st.session_state.db_manager.get_conversation_history()
+        st.session_state.messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in conversation_history
+        ]
+        st.session_state.messages_loaded = True
+
+
+def load_session(session_id: str):
+    """Load a specific session"""
+    st.session_state.db_session_id = session_id
+    st.session_state.messages_loaded = False
+    st.session_state.initialized = False
+
+    # Load app state for this session
+    app_state = st.session_state.db_manager.get_app_state(session_id)
+    if app_state:
+        st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
+        st.session_state.chat_state = app_state["chat_state"]
+    else:
+        st.session_state.vectorstore_ready = False
+        st.session_state.chat_state = None
+
+    # Reset QA system to force reinitialization with new state
+    st.session_state.qa_system = None
+    st.session_state.show_session_manager = False
+    st.rerun()
 
 
 def main():
-    
-    st.markdown('<h1 class="main-header">EduAI: AI Tutor</h1>', unsafe_allow_html=True)
+
+    st.markdown(
+        '<h1 class="main-header">🎓 EduAI: AI Tutor</h1>', unsafe_allow_html=True
+    )
     st.markdown(
         '<p class="sub-header">Your AI-Powered Learning Assistant</p>',
         unsafe_allow_html=True,
@@ -153,11 +197,6 @@ def main():
         pages = ["Upload Documents", "Ask Questions", "Generate Notes", "Create MCQs"]
 
         for page in pages:
-            button_class = (
-                "nav-button active"
-                if st.session_state.current_page == page
-                else "nav-button"
-            )
             if st.button(page, key=f"nav_{page}", use_container_width=True):
                 st.session_state.current_page = page
                 st.rerun()
@@ -166,14 +205,83 @@ def main():
         st.subheader("System Status")
         if st.session_state.vectorstore_ready:
             st.markdown(
-                '<div class="status-ready">Documents loaded and ready</div>',
+                '<div class="status-ready">✓ Documents loaded and ready</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<div class="status-pending">Please upload documents first</div>',
+                '<div class="status-pending">⚠ Please upload documents first</div>',
                 unsafe_allow_html=True,
             )
+
+        st.markdown("---")
+        st.subheader("Session Management")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Clear Chat", use_container_width=True):
+                st.session_state.db_manager.clear_conversation()
+                st.session_state.messages = []
+                st.session_state.messages_loaded = False
+                st.success("Chat history cleared!")
+                st.rerun()
+
+        with col2:
+            if st.button("🗑️ Reset All", use_container_width=True):
+                st.session_state.db_manager.delete_session()
+                st.session_state.vectorstore_ready = False
+                st.session_state.chat_state = None
+                st.session_state.qa_system = None
+                st.session_state.messages = []
+                st.session_state.messages_loaded = False
+                st.success("Session reset!")
+                st.rerun()
+
+        if st.button("📂 Manage Sessions", use_container_width=True):
+            st.session_state.show_session_manager = (
+                not st.session_state.show_session_manager
+            )
+            st.rerun()
+
+        if st.session_state.show_session_manager:
+            st.markdown("---")
+            st.subheader("Your Sessions")
+
+            # Get current session
+            current_session_id = st.session_state.db_manager.get_session_id()
+            sessions = st.session_state.db_manager.get_all_sessions()
+
+            # New Session button
+            if st.button("➕ New Session", use_container_width=True, type="primary"):
+                import time
+
+                new_session_id = f"session_{int(time.time() * 1000000)}"
+                st.session_state.db_manager.create_session(
+                    new_session_id, "Untitled Session"
+                )
+                load_session(new_session_id)
+
+            st.markdown("**All Sessions:**")
+
+            if not sessions:
+                st.info("No sessions yet. Upload documents to get started!")
+
+            for session in sessions:
+                is_active = session["session_id"] == current_session_id
+
+                # Display session name and message count
+                display_name = session["session_name"]
+                button_label = f"{'▶ ' if is_active else ''}{display_name}"
+                if session["message_count"] > 0:
+                    button_label += f" ({session['message_count']} msgs)"
+
+                if st.button(
+                    button_label,
+                    key=f"session_{session['session_id']}",
+                    use_container_width=True,
+                    disabled=is_active,
+                ):
+                    load_session(session["session_id"])
 
     page = st.session_state.current_page
     if page == "Upload Documents":
@@ -187,7 +295,7 @@ def main():
 
 
 def upload_documents_page():
-    st.header("Upload Your Study Documents")
+    st.header("📤 Upload Your Study Documents")
 
     st.markdown(
         """
@@ -203,6 +311,13 @@ def upload_documents_page():
     """,
         unsafe_allow_html=True,
     )
+
+    uploaded_docs = st.session_state.db_manager.get_documents()
+    if uploaded_docs:
+        st.markdown("### Previously Uploaded Documents")
+        with st.expander("View document history"):
+            for doc in uploaded_docs:
+                st.write(f"• {doc['filename']} ({doc['file_size']} bytes)")
 
     uploaded_files = st.file_uploader(
         "Choose PDF files",
@@ -227,23 +342,47 @@ def process_documents(uploaded_files):
     try:
         with st.spinner("Processing documents... This may take a few moments."):
             with tempfile.TemporaryDirectory() as temp_dir:
+                # Collect filenames for session naming
+                filenames = []
                 for uploaded_file in uploaded_files:
                     file_path = os.path.join(temp_dir, uploaded_file.name)
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
+                    filenames.append(uploaded_file.name.replace(".pdf", ""))
+                    st.session_state.db_manager.save_document(
+                        uploaded_file.name, uploaded_file.size
+                    )
+
+                # Name session based on uploaded files
+                if filenames:
+                    if len(filenames) == 1:
+                        session_name = filenames[0]
+                    elif len(filenames) <= 3:
+                        session_name = ", ".join(filenames)
+                    else:
+                        session_name = (
+                            ", ".join(filenames[:3]) + f" (+{len(filenames) - 3} more)"
+                        )
+
+                    st.session_state.db_manager.rename_session(
+                        st.session_state.db_manager.get_session_id(), session_name
+                    )
+
                 faiss_path = "faiss_index_local"
                 embed_docs(temp_dir, faiss_path)
 
                 st.session_state.vectorstore_ready = True
-                st.session_state.qa_system = (
-                    None  
+                st.session_state.qa_system = None
+
+                st.session_state.db_manager.save_app_state(
+                    vectorstore_ready=True, chat_state=st.session_state.chat_state
                 )
 
         st.markdown(
             """
         <div class="success-message">
-            <h4>Success!</h4>
+            <h4>✓ Success!</h4>
             <p>Documents have been processed and indexed successfully. You can now:</p>
             <ul>
                 <li>Ask questions about your documents</li>
@@ -263,13 +402,13 @@ def process_documents(uploaded_files):
 
 
 def ask_questions_page():
-    st.header("Ask Questions About Your Documents")
+    st.header("💬 Ask Questions About Your Documents")
 
     if not st.session_state.vectorstore_ready:
         st.markdown(
             """
         <div class="warning-message">
-            <h4>No Documents Loaded</h4>
+            <h4>⚠ No Documents Loaded</h4>
             <p>Please upload and process documents first using the "Upload Documents" page.</p>
         </div>
         """,
@@ -281,19 +420,26 @@ def ask_questions_page():
         """
     <div class="feature-box">
         <h4>AI-Powered Q&A</h4>
-        <p>Ask any question about your uploaded documents and get intelligent, context-aware answers.</p>
+        <p>Ask any question about your uploaded documents and get intelligent, context-aware answers with streaming responses.</p>
     </div>
     """,
         unsafe_allow_html=True,
     )
 
+    # Initialize QA system if needed
     if st.session_state.qa_system is None:
         with st.spinner("Initializing Q&A system..."):
             st.session_state.qa_system = DocumentQA()
-            st.session_state.chat_state = st.session_state.qa_system.init_state()
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+            # Restore chat state from database if available
+            if st.session_state.chat_state:
+                st.session_state.chat_state = st.session_state.qa_system.restore_state(
+                    st.session_state.chat_state
+                )
+            else:
+                st.session_state.chat_state = st.session_state.qa_system.init_state()
+
+    load_messages_from_db()
 
     for message in st.session_state.messages:
         if message["role"] == "user":
@@ -309,35 +455,66 @@ def ask_questions_page():
 
     if prompt := st.chat_input("Ask a question about your documents..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.db_manager.save_message("user", prompt)
 
-        with st.spinner("Processing your question..."):
+        st.markdown(
+            f'<div class="chat-message user-message"><strong>You:</strong> {prompt}</div>',
+            unsafe_allow_html=True,
+        )
+
+        with st.container():
+            message_placeholder = st.empty()
+            full_response = ""
+
             try:
-                result = st.session_state.qa_system.run(
+                for chunk in st.session_state.qa_system.run_stream(
                     prompt, st.session_state.chat_state
+                ):
+                    if "response_chunk" in chunk:
+                        full_response += chunk["response_chunk"]
+                        message_placeholder.markdown(
+                            f'<div class="chat-message assistant-message"><strong>Assistant:</strong> {full_response}▌</div>',
+                            unsafe_allow_html=True,
+                        )
+                    elif "state" in chunk:
+                        st.session_state.chat_state = chunk["state"]
+
+                message_placeholder.markdown(
+                    f'<div class="chat-message assistant-message"><strong>Assistant:</strong> {full_response}</div>',
+                    unsafe_allow_html=True,
                 )
-                st.session_state.chat_state = result
-                response = result["response"]
+
                 st.session_state.messages.append(
-                    {"role": "assistant", "content": response}
+                    {"role": "assistant", "content": full_response}
                 )
-                st.rerun()
+                st.session_state.db_manager.save_message("assistant", full_response)
+
+                # Serialize and save chat state to database
+                serialized_state = st.session_state.qa_system.serialize_state(
+                    st.session_state.chat_state
+                )
+                st.session_state.db_manager.save_app_state(
+                    vectorstore_ready=st.session_state.vectorstore_ready,
+                    chat_state=serialized_state,
+                )
+
             except Exception as e:
                 error_msg = f"Error: {str(e)}"
                 st.error(error_msg)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": error_msg}
                 )
-                st.rerun()
+                st.session_state.db_manager.save_message("assistant", error_msg)
 
 
 def generate_notes_page():
-    st.header("Generate Study Notes")
+    st.header("📝 Generate Study Notes")
 
     if not st.session_state.vectorstore_ready:
         st.markdown(
             """
         <div class="warning-message">
-            <h4>No Documents Loaded</h4>
+            <h4>⚠ No Documents Loaded</h4>
             <p>Please upload and process documents first using the "Upload Documents" page.</p>
         </div>
         """,
@@ -361,22 +538,50 @@ def generate_notes_page():
         unsafe_allow_html=True,
     )
 
-    if st.button("Generate Notes", type="primary"):
+    # Load existing notes if available
+    existing_notes = st.session_state.db_manager.get_generated_content("notes")
+
+    if existing_notes:
+        st.success("Previously generated notes found!")
+        st.markdown("### Your Study Notes")
+        st.markdown("---")
+        st.markdown(existing_notes)
+
+        st.download_button(
+            label="📥 Download Notes",
+            data=existing_notes,
+            file_name="study_notes.txt",
+            mime="text/plain",
+        )
+
+        st.markdown("---")
+
+    if st.button("🔄 Generate New Notes", type="primary"):
+        message_placeholder = st.empty()
+        full_response = ""
+
         with st.spinner("Generating comprehensive notes..."):
             try:
                 notes_gen = notes_generator()
                 state = notes_gen.init_state()
-                result = notes_gen.run(state)
+
+                for chunk in notes_gen.run_stream(state):
+                    if "response_chunk" in chunk:
+                        full_response += chunk["response_chunk"]
+                        message_placeholder.markdown(f"{full_response}▌")
+
+                message_placeholder.markdown(full_response)
+
+                # Save to database
+                st.session_state.db_manager.save_generated_content(
+                    "notes", full_response
+                )
 
                 st.success("Notes generated successfully!")
 
-                st.markdown("### Your Study Notes")
-                st.markdown("---")
-                st.markdown(result["response"])
-
                 st.download_button(
-                    label="Download Notes",
-                    data=result["response"],
+                    label="📥 Download Notes",
+                    data=full_response,
                     file_name="study_notes.txt",
                     mime="text/plain",
                 )
@@ -386,13 +591,13 @@ def generate_notes_page():
 
 
 def create_mcqs_page():
-    st.header("Create Practice MCQs")
+    st.header("📋 Create Practice MCQs")
 
     if not st.session_state.vectorstore_ready:
         st.markdown(
             """
         <div class="warning-message">
-            <h4>No Documents Loaded</h4>
+            <h4>⚠ No Documents Loaded</h4>
             <p>Please upload and process documents first using the "Upload Documents" page.</p>
         </div>
         """,
@@ -416,22 +621,50 @@ def create_mcqs_page():
         unsafe_allow_html=True,
     )
 
-    if st.button("Generate MCQs", type="primary"):
+    # Load existing MCQs if available
+    existing_mcqs = st.session_state.db_manager.get_generated_content("mcqs")
+
+    if existing_mcqs:
+        st.success("Previously generated MCQs found!")
+        st.markdown("### Practice Questions")
+        st.markdown("---")
+        st.markdown(existing_mcqs)
+
+        st.download_button(
+            label="📥 Download MCQs",
+            data=existing_mcqs,
+            file_name="practice_mcqs.txt",
+            mime="text/plain",
+        )
+
+        st.markdown("---")
+
+    if st.button("🔄 Generate New MCQs", type="primary"):
+        message_placeholder = st.empty()
+        full_response = ""
+
         with st.spinner("Creating practice questions..."):
             try:
                 mcq_gen = mcqs_generator()
                 state = mcq_gen.init_state()
-                result = mcq_gen.run(state)
+
+                for chunk in mcq_gen.run_stream(state):
+                    if "response_chunk" in chunk:
+                        full_response += chunk["response_chunk"]
+                        message_placeholder.markdown(f"{full_response}▌")
+
+                message_placeholder.markdown(full_response)
+
+                # Save to database
+                st.session_state.db_manager.save_generated_content(
+                    "mcqs", full_response
+                )
 
                 st.success("MCQs generated successfully!")
 
-                st.markdown("### Practice Questions")
-                st.markdown("---")
-                st.markdown(result["response"])
-
                 st.download_button(
-                    label="Download MCQs",
-                    data=result["response"],
+                    label="📥 Download MCQs",
+                    data=full_response,
                     file_name="practice_mcqs.txt",
                     mime="text/plain",
                 )
@@ -440,10 +673,5 @@ def create_mcqs_page():
                 st.error(f"Error generating MCQs: {str(e)}")
 
 
-def show_footer():
-    pass
-
-
 if __name__ == "__main__":
     main()
-    show_footer()
