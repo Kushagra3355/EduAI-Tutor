@@ -12,9 +12,7 @@ try:
     if "OPENAI_API_KEY" in st.secrets:
         os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 except FileNotFoundError:
-    # secrets.toml not found, will use .env file instead
     from dotenv import load_dotenv
-
     load_dotenv()
 
 
@@ -192,7 +190,6 @@ def load_session(session_id: str):
 
 
 def main():
-
     st.markdown(
         '<h1 class="main-header">🎓 EduAI: AI Tutor</h1>', unsafe_allow_html=True
     )
@@ -237,13 +234,20 @@ def main():
                 st.rerun()
 
         with col2:
-            if st.button("🗑️ Reset All", use_container_width=True):
+            if st.button("🗑️ Reset Session", use_container_width=True):
                 st.session_state.db_manager.delete_session()
                 st.session_state.vectorstore_ready = False
                 st.session_state.chat_state = None
                 st.session_state.qa_system = None
                 st.session_state.messages = []
                 st.session_state.messages_loaded = False
+                
+                # Create a new session after deletion
+                import time
+                new_session_id = f"session_{int(time.time() * 1000000)}"
+                st.session_state.db_manager.create_session(new_session_id, "New Session")
+                st.session_state.db_session_id = new_session_id
+                
                 st.success("Session reset!")
                 st.rerun()
 
@@ -264,10 +268,9 @@ def main():
             # New Session button
             if st.button("➕ New Session", use_container_width=True, type="primary"):
                 import time
-
                 new_session_id = f"session_{int(time.time() * 1000000)}"
                 st.session_state.db_manager.create_session(
-                    new_session_id, "Untitled Session"
+                    new_session_id, "New Session"
                 )
                 load_session(new_session_id)
 
@@ -285,13 +288,21 @@ def main():
                 if session["message_count"] > 0:
                     button_label += f" ({session['message_count']} msgs)"
 
-                if st.button(
-                    button_label,
-                    key=f"session_{session['session_id']}",
-                    use_container_width=True,
-                    disabled=is_active,
-                ):
-                    load_session(session["session_id"])
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    if st.button(
+                        button_label,
+                        key=f"session_{session['session_id']}",
+                        use_container_width=True,
+                        disabled=is_active,
+                    ):
+                        load_session(session["session_id"])
+                
+                with col2:
+                    if not is_active:
+                        if st.button("🗑️", key=f"delete_{session['session_id']}", use_container_width=True):
+                            st.session_state.db_manager.delete_session(session["session_id"])
+                            st.rerun()
 
     page = st.session_state.current_page
     if page == "Upload Documents":
