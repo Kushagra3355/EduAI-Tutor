@@ -23,6 +23,7 @@ Future Enhancements:
 
 -FastAPI for backend
 -Multi-language support
+-Sign in / Sign up feature
 
 How to run:
 
