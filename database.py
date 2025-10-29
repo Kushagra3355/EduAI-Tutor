@@ -27,8 +27,7 @@ class DatabaseManager:
                 user_id INTEGER NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """
         )
@@ -38,12 +37,12 @@ class DatabaseManager:
             """
             CREATE TABLE IF NOT EXISTS app_state (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL UNIQUE,
+                session_id TEXT NOT NULL,
                 user_id INTEGER NOT NULL,
                 vectorstore_ready BOOLEAN DEFAULT 0,
                 chat_state TEXT,
                 last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                UNIQUE(session_id, user_id)
             )
         """
         )
@@ -57,8 +56,7 @@ class DatabaseManager:
                 user_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
                 file_size INTEGER,
-                upload_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                upload_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """
         )
@@ -72,8 +70,7 @@ class DatabaseManager:
                 user_id INTEGER NOT NULL,
                 content_type TEXT NOT NULL,
                 content TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """
         )
@@ -82,13 +79,13 @@ class DatabaseManager:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS sessions (
-                session_id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
                 user_id INTEGER NOT NULL,
                 session_name TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
                 message_count INTEGER DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES users (id)
+                PRIMARY KEY (session_id, user_id)
             )
         """
         )
@@ -104,7 +101,7 @@ class DatabaseManager:
         cursor.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_sessions_user 
-            ON sessions(user_id)
+            ON sessions(user_id, last_accessed DESC)
         """
         )
         
@@ -137,11 +134,11 @@ class DatabaseManager:
                     st.session_state.db_session_id = sessions[0]["session_id"]
                 else:
                     # Create new session
-                    st.session_state.db_session_id = f"session_{int(time.time() * 1000000)}"
+                    st.session_state.db_session_id = f"session_{self.user_id}_{int(time.time() * 1000000)}"
                     self.create_session(st.session_state.db_session_id)
             else:
-                # Fallback if no user_id
-                st.session_state.db_session_id = f"session_{int(time.time() * 1000000)}"
+                # Should not happen in normal flow
+                raise ValueError("Cannot create session without user_id")
                 
         return st.session_state.db_session_id
 
@@ -151,8 +148,7 @@ class DatabaseManager:
             session_name = "New Session"
 
         if not self.user_id:
-            print("Warning: Cannot create session without user_id")
-            return
+            raise ValueError("Cannot create session without user_id")
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -168,6 +164,7 @@ class DatabaseManager:
             conn.commit()
         except Exception as e:
             print(f"Error creating session: {e}")
+            raise
         finally:
             conn.close()
 
@@ -251,8 +248,7 @@ class DatabaseManager:
             session_id = self.get_session_id()
 
         if not self.user_id:
-            print("Warning: Cannot save message without user_id")
-            return
+            raise ValueError("Cannot save message without user_id")
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -344,8 +340,7 @@ class DatabaseManager:
             session_id = self.get_session_id()
 
         if not self.user_id:
-            print("Warning: Cannot save app state without user_id")
-            return
+            raise ValueError("Cannot save app state without user_id")
 
         # Serialize chat state properly, handling LangChain message objects
         chat_state_json = None
@@ -360,33 +355,18 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # First, check if record exists
-        cursor.execute(
-            "SELECT id FROM app_state WHERE session_id = ? AND user_id = ?",
-            (session_id, self.user_id),
-        )
-        exists = cursor.fetchone()
-
-        if exists:
+        try:
+            # Use INSERT OR REPLACE with composite key
             cursor.execute(
                 """
-                UPDATE app_state 
-                SET vectorstore_ready = ?, chat_state = ?, last_updated = CURRENT_TIMESTAMP
-                WHERE session_id = ? AND user_id = ?
-            """,
-                (vectorstore_ready, chat_state_json, session_id, self.user_id),
-            )
-        else:
-            cursor.execute(
-                """
-                INSERT INTO app_state (session_id, user_id, vectorstore_ready, chat_state, last_updated)
+                INSERT OR REPLACE INTO app_state (session_id, user_id, vectorstore_ready, chat_state, last_updated)
                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
                 (session_id, self.user_id, vectorstore_ready, chat_state_json),
             )
-
-        conn.commit()
-        conn.close()
+            conn.commit()
+        finally:
+            conn.close()
 
     def _serialize_chat_state(self, chat_state: Dict) -> Dict:
         """Serialize chat state, handling LangChain message objects"""
@@ -476,8 +456,7 @@ class DatabaseManager:
             session_id = self.get_session_id()
 
         if not self.user_id:
-            print("Warning: Cannot save generated content without user_id")
-            return
+            raise ValueError("Cannot save generated content without user_id")
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -540,8 +519,7 @@ class DatabaseManager:
             session_id = self.get_session_id()
 
         if not self.user_id:
-            print("Warning: Cannot save document without user_id")
-            return
+            raise ValueError("Cannot save document without user_id")
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -621,7 +599,7 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-        # If current session was deleted, create a new one
+        # If current session was deleted, clear from session state
         import streamlit as st
         if "db_session_id" in st.session_state and st.session_state.db_session_id == session_id:
             del st.session_state.db_session_id
