@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
-from typing import TypedDict, List
+from typing import TypedDict, List, Iterator, Dict
 from langchain.prompts import PromptTemplate
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
@@ -15,11 +15,11 @@ class mcqs_generator:
 
     def __init__(
         self,
-        llm_model: str = "gpt-5",
+        llm_model: str = "gpt-4o-mini",
         faiss_path: str = "faiss_index_local",
         embed_model: str = "text-embedding-3-small",
     ):
-        self.llm = ChatOpenAI(model=llm_model)
+        self.llm = ChatOpenAI(model=llm_model, streaming=True)
         self.vectorstore = FAISS.load_local(
             faiss_path,
             embeddings=OpenAIEmbeddings(model=embed_model),
@@ -85,3 +85,45 @@ Generate the questions now:
     def run(self, state: GraphState) -> GraphState:
         return self.graph.invoke(state)
 
+    def run_stream(self, state: GraphState) -> Iterator[Dict]:
+        """Run MCQ generation with streaming"""
+        # Run retrieval
+        state = self.retriever_node(state)
+        
+        # Prepare prompt
+        context = "\n\n".join(state["context"])
+        prompt = PromptTemplate(
+            template="""You are an expert question paper setter for academic exams.
+
+Generate 10 multiple choice questions (MCQs) based on the following context. Each question must have:
+- Exactly 4 options (labeled A, B, C, D)
+- Only one correct answer
+- No repetition of questions
+- The difficulty should be a mix of basic understanding and conceptual reasoning
+- Do not use '#'
+
+After listing all 10 questions, display the **correct answer** for each at the end in the format:
+Answer Key:
+1. A
+2. C
+...
+10. B
+
+Context:
+{context}
+
+Generate the questions now:
+""",
+            input_variables=["context"],
+        )
+        formatted_prompt = prompt.format(context=context)
+        
+        # Stream the response
+        full_response = ""
+        for chunk in self.llm.stream(formatted_prompt):
+            if chunk.content:
+                full_response += chunk.content
+                yield {"response_chunk": chunk.content}
+        
+        state["response"] = full_response
+        yield {"state": state}

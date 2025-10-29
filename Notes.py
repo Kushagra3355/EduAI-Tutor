@@ -1,6 +1,6 @@
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
-from typing import TypedDict, List
+from typing import TypedDict, List, Iterator, Dict
 from langchain_community.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain_openai import OpenAIEmbeddings
@@ -15,11 +15,11 @@ class notes_generator:
 
     def __init__(
         self,
-        llm_model: str = "gpt-5",
+        llm_model: str = "gpt-4o-mini",
         faiss_path: str = "faiss_index_local",
         embed_model: str = "text-embedding-3-small",
     ):
-        self.llm = ChatOpenAI(model=llm_model)
+        self.llm = ChatOpenAI(model=llm_model, streaming=True)
         self.vectorstore = FAISS.load_local(
             faiss_path,
             embeddings=OpenAIEmbeddings(model=embed_model),
@@ -46,7 +46,7 @@ Your task is to generate well detailed study notes from the provided context. Th
 - Include definitions, key facts, important concepts, and examples where applicable.
 - Use simple and clear language for easy understanding.
 - Preserve important technical terminology, formulas, or figures if present.
-- Avoid copying the context verbatim — rephrase and simplify where appropriate.
+- Avoid copying the context verbatim rephrase and simplify where appropriate.
 - Organize content logically with proper indentation and formatting.
 - Do not use '#' 
 
@@ -80,3 +80,40 @@ Now generate the notes below:
     def run(self, state: GraphState) -> GraphState:
         return self.graph.invoke(state)
 
+    def run_stream(self, state: GraphState) -> Iterator[Dict]:
+        """Run notes generation with streaming"""
+        # Run retrieval
+        state = self.retriever_node(state)
+
+        # Prepare prompt
+        context = "\n\n".join(state["context"])
+        prompt = PromptTemplate(
+            template="""You are an academic expert who specializes in summarizing educational content into clear, structured notes for students.
+
+Your task is to generate well detailed study notes from the provided context. The notes should follow these rules:
+- Use bullet points for clarity.
+- Include definitions, key facts, important concepts, and examples where applicable.
+- Use simple and clear language for easy understanding.
+- Preserve important technical terminology, formulas, or figures if present.
+- Avoid copying the context verbatim rephrase and simplify where appropriate.
+- Organize content logically with proper indentation and formatting.
+- Do not use '#' 
+
+ Context:
+{context}
+
+Now generate the notes below:
+""",
+            input_variables=["context"],
+        )
+        formatted_prompt = prompt.format(context=context)
+
+        # Stream the response
+        full_response = ""
+        for chunk in self.llm.stream(formatted_prompt):
+            if chunk.content:
+                full_response += chunk.content
+                yield {"response_chunk": chunk.content}
+
+        state["response"] = full_response
+        yield {"state": state}
