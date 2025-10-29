@@ -7,6 +7,7 @@ from DocQA import DocumentQA
 from MCQs import mcqs_generator
 from Notes import notes_generator
 from database import DatabaseManager
+from auth_pages import show_auth_page, logout_user
 
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -131,67 +132,47 @@ st.markdown(
     .stSelectbox label, .stFileUploader label {
         color: #f9fafb !important;
     }
+    .user-info-box {
+        background-color: #1e3a8a;
+        color: #dbeafe;
+        padding: 1rem;
+        border-radius: 6px;
+        margin: 1rem 0;
+        border: 1px solid #3b82f6;
+    }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# Initialize database
-if "db_manager" not in st.session_state:
-    st.session_state.db_manager = DatabaseManager()
-
-# Initialize session state from database
-if "initialized" not in st.session_state:
-    st.session_state.initialized = True
-
-    # Load app state from database
-    app_state = st.session_state.db_manager.get_app_state()
-    if app_state:
-        st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
-        st.session_state.chat_state = app_state["chat_state"]
-    else:
-        st.session_state.vectorstore_ready = False
-        st.session_state.chat_state = None
-
-    st.session_state.qa_system = None
-    st.session_state.current_page = "Upload Documents"
-    st.session_state.messages_loaded = False
-    st.session_state.show_session_manager = False
-
-
-def load_messages_from_db():
-    """Load messages from database into session state"""
-    if not st.session_state.messages_loaded:
-        conversation_history = st.session_state.db_manager.get_conversation_history()
-        st.session_state.messages = [
-            {"role": msg["role"], "content": msg["content"]}
-            for msg in conversation_history
-        ]
-        st.session_state.messages_loaded = True
-
-
-def load_session(session_id: str):
-    """Load a specific session"""
-    st.session_state.db_session_id = session_id
-    st.session_state.messages_loaded = False
-    st.session_state.initialized = False
-
-    # Load app state for this session
-    app_state = st.session_state.db_manager.get_app_state(session_id)
-    if app_state:
-        st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
-        st.session_state.chat_state = app_state["chat_state"]
-    else:
-        st.session_state.vectorstore_ready = False
-        st.session_state.chat_state = None
-
-    # Reset QA system to force reinitialization with new state
-    st.session_state.qa_system = None
-    st.session_state.show_session_manager = False
-    st.rerun()
-
 
 def main():
+    # Check authentication first
+    if not show_auth_page():
+        return  # If not authenticated, show auth page and return
+
+    # User is authenticated, show main app
+    # Initialize database with user-specific session
+    if "db_manager" not in st.session_state:
+        st.session_state.db_manager = DatabaseManager()
+
+    # Initialize session state from database
+    if "initialized" not in st.session_state:
+        st.session_state.initialized = True
+
+        # Load app state from database
+        app_state = st.session_state.db_manager.get_app_state()
+        if app_state:
+            st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
+            st.session_state.chat_state = app_state["chat_state"]
+        else:
+            st.session_state.vectorstore_ready = False
+            st.session_state.chat_state = None
+
+        st.session_state.qa_system = None
+        st.session_state.current_page = "Upload Documents"
+        st.session_state.messages_loaded = False
+        st.session_state.show_session_manager = False
 
     st.markdown(
         '<h1 class="main-header">🎓 EduAI: AI Tutor</h1>', unsafe_allow_html=True
@@ -202,6 +183,22 @@ def main():
     )
 
     with st.sidebar:
+        # Display user info
+        if st.session_state.user_info:
+            st.markdown(
+                f"""
+            <div class="user-info-box">
+                <strong>👤 {st.session_state.user_info['username']}</strong><br>
+                <small>{st.session_state.user_info['email']}</small>
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+        if st.button("🚪 Logout", use_container_width=True):
+            logout_user()
+
+        st.markdown("---")
         st.title("Navigation")
 
         pages = ["Upload Documents", "Ask Questions", "Generate Notes", "Create MCQs"]
@@ -302,6 +299,38 @@ def main():
         generate_notes_page()
     elif page == "Create MCQs":
         create_mcqs_page()
+
+
+def load_messages_from_db():
+    """Load messages from database into session state"""
+    if not st.session_state.messages_loaded:
+        conversation_history = st.session_state.db_manager.get_conversation_history()
+        st.session_state.messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in conversation_history
+        ]
+        st.session_state.messages_loaded = True
+
+
+def load_session(session_id: str):
+    """Load a specific session"""
+    st.session_state.db_session_id = session_id
+    st.session_state.messages_loaded = False
+    st.session_state.initialized = False
+
+    # Load app state for this session
+    app_state = st.session_state.db_manager.get_app_state(session_id)
+    if app_state:
+        st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
+        st.session_state.chat_state = app_state["chat_state"]
+    else:
+        st.session_state.vectorstore_ready = False
+        st.session_state.chat_state = None
+
+    # Reset QA system to force reinitialization with new state
+    st.session_state.qa_system = None
+    st.session_state.show_session_manager = False
+    st.rerun()
 
 
 def upload_documents_page():
