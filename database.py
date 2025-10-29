@@ -2,7 +2,6 @@ import sqlite3
 import json
 import time
 from typing import List, Dict, Optional
-from pathlib import Path
 
 
 class DatabaseManager:
@@ -90,7 +89,6 @@ class DatabaseManager:
         import streamlit as st
 
         if "db_session_id" not in st.session_state:
-            # Use timestamp for unique ID
             st.session_state.db_session_id = f"session_{int(time.time() * 1000000)}"
             self.create_session(st.session_state.db_session_id)
         return st.session_state.db_session_id
@@ -265,7 +263,6 @@ class DatabaseManager:
         if session_id is None:
             session_id = self.get_session_id()
 
-        # Serialize chat state properly, handling LangChain message objects
         chat_state_json = None
         if chat_state:
             try:
@@ -301,7 +298,6 @@ class DatabaseManager:
         serialized = {}
         for key, value in chat_state.items():
             if key == "messages" and isinstance(value, list):
-                # Serialize message objects
                 serialized_messages = []
                 for msg in value:
                     if isinstance(msg, BaseMessage):
@@ -376,13 +372,11 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Delete old content of the same type for this session
         cursor.execute(
             "DELETE FROM generated_content WHERE session_id = ? AND content_type = ?",
             (session_id, content_type),
         )
 
-        # Insert new content
         cursor.execute(
             """
             INSERT INTO generated_content (session_id, content_type, content)
