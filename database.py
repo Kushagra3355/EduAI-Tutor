@@ -6,10 +6,11 @@ from pathlib import Path
 
 
 class DatabaseManager:
-    """Manages SQLite database for storing conversation history and application state"""
+    """Manages SQLite database for storing conversation history and application state with user isolation"""
 
-    def __init__(self, db_path: str = "eduai_data.db"):
+    def __init__(self, db_path: str = "eduai_data.db", user_id: Optional[int] = None):
         self.db_path = db_path
+        self.user_id = user_id
         self.init_database()
 
     def init_database(self):
@@ -17,68 +18,107 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Create conversations table
+        # Create conversations table with user_id
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """
         )
 
-        # Create app_state table for storing application state
+        # Create app_state table for storing application state with user_id
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS app_state (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
                 vectorstore_ready BOOLEAN DEFAULT 0,
                 chat_state TEXT,
-                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+                last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """
         )
 
-        # Create documents table to track uploaded documents
+        # Create documents table to track uploaded documents with user_id
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS documents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
                 file_size INTEGER,
-                upload_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                upload_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """
         )
 
-        # Create generated_content table for notes and MCQs
+        # Create generated_content table for notes and MCQs with user_id
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS generated_content (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
                 content_type TEXT NOT NULL,
                 content TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
         """
         )
 
-        # Create sessions table for session management
+        # Create sessions table for session management with user_id
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS sessions (
                 session_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
                 session_name TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
-                message_count INTEGER DEFAULT 0
+                message_count INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             )
+        """
+        )
+
+        # Create indexes for better performance
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_conversations_session_user 
+            ON conversations(session_id, user_id)
+        """
+        )
+        
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sessions_user 
+            ON sessions(user_id)
+        """
+        )
+        
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_documents_session_user 
+            ON documents(session_id, user_id)
+        """
+        )
+        
+        cursor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_generated_content_session_user 
+            ON generated_content(session_id, user_id)
         """
         )
 
@@ -90,15 +130,29 @@ class DatabaseManager:
         import streamlit as st
 
         if "db_session_id" not in st.session_state:
-            # Use timestamp for unique ID
-            st.session_state.db_session_id = f"session_{int(time.time() * 1000000)}"
-            self.create_session(st.session_state.db_session_id)
+            # Try to load most recent session for this user
+            if self.user_id:
+                sessions = self.get_all_sessions()
+                if sessions:
+                    st.session_state.db_session_id = sessions[0]["session_id"]
+                else:
+                    # Create new session
+                    st.session_state.db_session_id = f"session_{int(time.time() * 1000000)}"
+                    self.create_session(st.session_state.db_session_id)
+            else:
+                # Fallback if no user_id
+                st.session_state.db_session_id = f"session_{int(time.time() * 1000000)}"
+                
         return st.session_state.db_session_id
 
     def create_session(self, session_id: str, session_name: Optional[str] = None):
-        """Create a new session entry"""
+        """Create a new session entry for current user"""
         if session_name is None:
             session_name = "New Session"
+
+        if not self.user_id:
+            print("Warning: Cannot create session without user_id")
+            return
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -106,10 +160,10 @@ class DatabaseManager:
         try:
             cursor.execute(
                 """
-                INSERT OR IGNORE INTO sessions (session_id, session_name, created_at, last_accessed)
-                VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                INSERT OR IGNORE INTO sessions (session_id, user_id, session_name, created_at, last_accessed)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             """,
-                (session_id, session_name),
+                (session_id, self.user_id, session_name),
             )
             conn.commit()
         except Exception as e:
@@ -122,6 +176,9 @@ class DatabaseManager:
         if session_id is None:
             session_id = self.get_session_id()
 
+        if not self.user_id:
+            return
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -129,16 +186,19 @@ class DatabaseManager:
             """
             UPDATE sessions 
             SET last_accessed = CURRENT_TIMESTAMP
-            WHERE session_id = ?
+            WHERE session_id = ? AND user_id = ?
         """,
-            (session_id,),
+            (session_id, self.user_id),
         )
 
         conn.commit()
         conn.close()
 
     def get_all_sessions(self) -> List[Dict]:
-        """Get list of all sessions with metadata"""
+        """Get list of all sessions for current user with metadata"""
+        if not self.user_id:
+            return []
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -147,10 +207,12 @@ class DatabaseManager:
             SELECT s.session_id, s.session_name, s.created_at, s.last_accessed,
                    COUNT(c.id) as message_count
             FROM sessions s
-            LEFT JOIN conversations c ON s.session_id = c.session_id
+            LEFT JOIN conversations c ON s.session_id = c.session_id AND c.user_id = s.user_id
+            WHERE s.user_id = ?
             GROUP BY s.session_id
             ORDER BY s.last_accessed DESC
-        """
+        """,
+            (self.user_id,),
         )
 
         rows = cursor.fetchall()
@@ -168,13 +230,16 @@ class DatabaseManager:
         ]
 
     def rename_session(self, session_id: str, new_name: str):
-        """Rename a session"""
+        """Rename a session (only if it belongs to current user)"""
+        if not self.user_id:
+            return
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         cursor.execute(
-            "UPDATE sessions SET session_name = ? WHERE session_id = ?",
-            (new_name, session_id),
+            "UPDATE sessions SET session_name = ? WHERE session_id = ? AND user_id = ?",
+            (new_name, session_id, self.user_id),
         )
 
         conn.commit()
@@ -185,15 +250,19 @@ class DatabaseManager:
         if session_id is None:
             session_id = self.get_session_id()
 
+        if not self.user_id:
+            print("Warning: Cannot save message without user_id")
+            return
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         cursor.execute(
             """
-            INSERT INTO conversations (session_id, role, content)
-            VALUES (?, ?, ?)
+            INSERT INTO conversations (session_id, user_id, role, content)
+            VALUES (?, ?, ?, ?)
         """,
-            (session_id, role, content),
+            (session_id, self.user_id, role, content),
         )
 
         conn.commit()
@@ -204,9 +273,12 @@ class DatabaseManager:
     def get_conversation_history(
         self, session_id: Optional[str] = None, limit: Optional[int] = None
     ) -> List[Dict[str, str]]:
-        """Retrieve conversation history from the database"""
+        """Retrieve conversation history from the database for current user"""
         if session_id is None:
             session_id = self.get_session_id()
+
+        if not self.user_id:
+            return []
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -216,11 +288,11 @@ class DatabaseManager:
                 """
                 SELECT role, content, timestamp
                 FROM conversations
-                WHERE session_id = ?
+                WHERE session_id = ? AND user_id = ?
                 ORDER BY timestamp DESC
                 LIMIT ?
             """,
-                (session_id, limit),
+                (session_id, self.user_id, limit),
             )
             rows = cursor.fetchall()
             rows.reverse()
@@ -229,10 +301,10 @@ class DatabaseManager:
                 """
                 SELECT role, content, timestamp
                 FROM conversations
-                WHERE session_id = ?
+                WHERE session_id = ? AND user_id = ?
                 ORDER BY timestamp ASC
             """,
-                (session_id,),
+                (session_id, self.user_id),
             )
             rows = cursor.fetchall()
 
@@ -243,14 +315,20 @@ class DatabaseManager:
         ]
 
     def clear_conversation(self, session_id: Optional[str] = None):
-        """Clear conversation history for a session"""
+        """Clear conversation history for a session (only for current user)"""
         if session_id is None:
             session_id = self.get_session_id()
+
+        if not self.user_id:
+            return
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM conversations WHERE session_id = ?", (session_id,))
+        cursor.execute(
+            "DELETE FROM conversations WHERE session_id = ? AND user_id = ?", 
+            (session_id, self.user_id)
+        )
 
         conn.commit()
         conn.close()
@@ -265,6 +343,10 @@ class DatabaseManager:
         if session_id is None:
             session_id = self.get_session_id()
 
+        if not self.user_id:
+            print("Warning: Cannot save app state without user_id")
+            return
+
         # Serialize chat state properly, handling LangChain message objects
         chat_state_json = None
         if chat_state:
@@ -278,13 +360,30 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        # First, check if record exists
         cursor.execute(
-            """
-            INSERT OR REPLACE INTO app_state (session_id, vectorstore_ready, chat_state, last_updated)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-        """,
-            (session_id, vectorstore_ready, chat_state_json),
+            "SELECT id FROM app_state WHERE session_id = ? AND user_id = ?",
+            (session_id, self.user_id),
         )
+        exists = cursor.fetchone()
+
+        if exists:
+            cursor.execute(
+                """
+                UPDATE app_state 
+                SET vectorstore_ready = ?, chat_state = ?, last_updated = CURRENT_TIMESTAMP
+                WHERE session_id = ? AND user_id = ?
+            """,
+                (vectorstore_ready, chat_state_json, session_id, self.user_id),
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO app_state (session_id, user_id, vectorstore_ready, chat_state, last_updated)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+                (session_id, self.user_id, vectorstore_ready, chat_state_json),
+            )
 
         conn.commit()
         conn.close()
@@ -329,9 +428,12 @@ class DatabaseManager:
         return serialized
 
     def get_app_state(self, session_id: Optional[str] = None) -> Optional[Dict]:
-        """Retrieve application state from the database"""
+        """Retrieve application state from the database for current user"""
         if session_id is None:
             session_id = self.get_session_id()
+
+        if not self.user_id:
+            return None
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -340,9 +442,9 @@ class DatabaseManager:
             """
             SELECT vectorstore_ready, chat_state
             FROM app_state
-            WHERE session_id = ?
+            WHERE session_id = ? AND user_id = ?
         """,
-            (session_id,),
+            (session_id, self.user_id),
         )
 
         row = cursor.fetchone()
@@ -373,22 +475,26 @@ class DatabaseManager:
         if session_id is None:
             session_id = self.get_session_id()
 
+        if not self.user_id:
+            print("Warning: Cannot save generated content without user_id")
+            return
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Delete old content of the same type for this session
+        # Delete old content of the same type for this session and user
         cursor.execute(
-            "DELETE FROM generated_content WHERE session_id = ? AND content_type = ?",
-            (session_id, content_type),
+            "DELETE FROM generated_content WHERE session_id = ? AND user_id = ? AND content_type = ?",
+            (session_id, self.user_id, content_type),
         )
 
         # Insert new content
         cursor.execute(
             """
-            INSERT INTO generated_content (session_id, content_type, content)
-            VALUES (?, ?, ?)
+            INSERT INTO generated_content (session_id, user_id, content_type, content)
+            VALUES (?, ?, ?, ?)
         """,
-            (session_id, content_type, content),
+            (session_id, self.user_id, content_type, content),
         )
 
         conn.commit()
@@ -397,9 +503,12 @@ class DatabaseManager:
     def get_generated_content(
         self, content_type: str, session_id: Optional[str] = None
     ) -> Optional[str]:
-        """Retrieve generated content from the database"""
+        """Retrieve generated content from the database for current user"""
         if session_id is None:
             session_id = self.get_session_id()
+
+        if not self.user_id:
+            return None
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -408,11 +517,11 @@ class DatabaseManager:
             """
             SELECT content
             FROM generated_content
-            WHERE session_id = ? AND content_type = ?
+            WHERE session_id = ? AND user_id = ? AND content_type = ?
             ORDER BY timestamp DESC
             LIMIT 1
         """,
-            (session_id, content_type),
+            (session_id, self.user_id, content_type),
         )
 
         row = cursor.fetchone()
@@ -430,24 +539,31 @@ class DatabaseManager:
         if session_id is None:
             session_id = self.get_session_id()
 
+        if not self.user_id:
+            print("Warning: Cannot save document without user_id")
+            return
+
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
         cursor.execute(
             """
-            INSERT INTO documents (session_id, filename, file_size)
-            VALUES (?, ?, ?)
+            INSERT INTO documents (session_id, user_id, filename, file_size)
+            VALUES (?, ?, ?, ?)
         """,
-            (session_id, filename, file_size),
+            (session_id, self.user_id, filename, file_size),
         )
 
         conn.commit()
         conn.close()
 
     def get_documents(self, session_id: Optional[str] = None) -> List[Dict]:
-        """Retrieve document metadata from the database"""
+        """Retrieve document metadata from the database for current user"""
         if session_id is None:
             session_id = self.get_session_id()
+
+        if not self.user_id:
+            return []
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -456,10 +572,10 @@ class DatabaseManager:
             """
             SELECT filename, file_size, upload_timestamp
             FROM documents
-            WHERE session_id = ?
+            WHERE session_id = ? AND user_id = ?
             ORDER BY upload_timestamp DESC
         """,
-            (session_id,),
+            (session_id, self.user_id),
         )
 
         rows = cursor.fetchall()
@@ -471,20 +587,42 @@ class DatabaseManager:
         ]
 
     def delete_session(self, session_id: Optional[str] = None):
-        """Delete all data for a session"""
+        """Delete all data for a session (only for current user)"""
         if session_id is None:
             session_id = self.get_session_id()
+
+        if not self.user_id:
+            return
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM conversations WHERE session_id = ?", (session_id,))
-        cursor.execute("DELETE FROM app_state WHERE session_id = ?", (session_id,))
-        cursor.execute("DELETE FROM documents WHERE session_id = ?", (session_id,))
         cursor.execute(
-            "DELETE FROM generated_content WHERE session_id = ?", (session_id,)
+            "DELETE FROM conversations WHERE session_id = ? AND user_id = ?", 
+            (session_id, self.user_id)
         )
-        cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+        cursor.execute(
+            "DELETE FROM app_state WHERE session_id = ? AND user_id = ?", 
+            (session_id, self.user_id)
+        )
+        cursor.execute(
+            "DELETE FROM documents WHERE session_id = ? AND user_id = ?", 
+            (session_id, self.user_id)
+        )
+        cursor.execute(
+            "DELETE FROM generated_content WHERE session_id = ? AND user_id = ?", 
+            (session_id, self.user_id)
+        )
+        cursor.execute(
+            "DELETE FROM sessions WHERE session_id = ? AND user_id = ?", 
+            (session_id, self.user_id)
+        )
 
         conn.commit()
         conn.close()
+
+        # If current session was deleted, create a new one
+        import streamlit as st
+        if "db_session_id" in st.session_state and st.session_state.db_session_id == session_id:
+            del st.session_state.db_session_id
+            # Will be recreated on next get_session_id() call
