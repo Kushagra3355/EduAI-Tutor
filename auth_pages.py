@@ -65,24 +65,20 @@ def login_page():
         )
 
         with st.form("login_form", clear_on_submit=False):
-            st.markdown("### Sign In")
+            st.markdown('<h3 style="text-align: center;">Sign In</h3>', unsafe_allow_html=True)
             
             username = st.text_input(
                 "Username or Email",
                 placeholder="Enter your username or email",
                 key="login_username",
-                label_visibility="collapsed",
             )
-            st.markdown('<p style="margin-bottom: 1rem; font-size: 0.9rem; color: #9ca3af;">Username or Email</p>', unsafe_allow_html=True)
 
             password = st.text_input(
                 "Password",
                 type="password",
                 placeholder="Enter your password",
                 key="login_password",
-                label_visibility="collapsed",
             )
-            st.markdown('<p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: #9ca3af;">Password</p>', unsafe_allow_html=True)
 
             submit = st.form_submit_button("Sign In", use_container_width=True, type="primary")
 
@@ -158,41 +154,33 @@ def signup_page():
         )
 
         with st.form("signup_form", clear_on_submit=False):
-            st.markdown("### Create Account")
+            st.markdown('<h3 style="text-align: center;">Create Account</h3>', unsafe_allow_html=True)
             
             username = st.text_input(
                 "Username",
                 placeholder="Choose a username (min. 3 characters)",
                 key="signup_username",
-                label_visibility="collapsed",
             )
-            st.markdown('<p style="margin-bottom: 1rem; font-size: 0.9rem; color: #9ca3af;">Username (min. 3 characters)</p>', unsafe_allow_html=True)
 
             email = st.text_input(
                 "Email",
                 placeholder="your.email@example.com",
                 key="signup_email",
-                label_visibility="collapsed",
             )
-            st.markdown('<p style="margin-bottom: 1rem; font-size: 0.9rem; color: #9ca3af;">Email Address</p>', unsafe_allow_html=True)
 
             password = st.text_input(
                 "Password",
                 type="password",
                 placeholder="Create a strong password (min. 6 characters)",
                 key="signup_password",
-                label_visibility="collapsed",
             )
-            st.markdown('<p style="margin-bottom: 1rem; font-size: 0.9rem; color: #9ca3af;">Password (min. 6 characters)</p>', unsafe_allow_html=True)
 
             confirm_password = st.text_input(
                 "Confirm Password",
                 type="password",
                 placeholder="Re-enter your password",
                 key="signup_confirm",
-                label_visibility="collapsed",
             )
-            st.markdown('<p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: #9ca3af;">Confirm Password</p>', unsafe_allow_html=True)
 
             submit = st.form_submit_button("Create Account", use_container_width=True, type="primary")
 
