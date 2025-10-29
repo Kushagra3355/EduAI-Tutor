@@ -8,6 +8,16 @@ from MCQs import mcqs_generator
 from Notes import notes_generator
 from database import DatabaseManager
 
+try:
+    if "OPENAI_API_KEY" in st.secrets:
+        os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+except FileNotFoundError:
+    # secrets.toml not found, will use .env file instead
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+
 st.set_page_config(
     page_title="EduAI - AI-Powered Learning Assistant",
     page_icon="📚",
