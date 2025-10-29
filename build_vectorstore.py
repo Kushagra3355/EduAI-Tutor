@@ -1,6 +1,6 @@
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 
@@ -26,3 +26,4 @@ def embed_docs(pdf_path, faiss_save_path: str):
 
     vectorstore = FAISS.from_documents(chunks, embedding=model)
     vectorstore.save_local(faiss_save_path)
+
