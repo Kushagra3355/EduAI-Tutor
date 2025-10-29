@@ -7,7 +7,7 @@ from DocQA import DocumentQA
 from MCQs import mcqs_generator
 from Notes import notes_generator
 from database import DatabaseManager
-from auth_pages import show_auth_page, logout_user
+from auth_pages import show_auth_page, logout_user, get_current_user_id
 
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -146,21 +146,26 @@ st.markdown(
 )
 
 
-def main():
-    # Check authentication first
-    if not show_auth_page():
-        return  # If not authenticated, show auth page and return
-
-    # User is authenticated, show main app
-    # Initialize database with user-specific session
-    if "db_manager" not in st.session_state:
-        st.session_state.db_manager = DatabaseManager()
-
-    # Initialize session state from database
-    if "initialized" not in st.session_state:
+def initialize_user_session():
+    """Initialize or reinitialize session for current user"""
+    current_user_id = get_current_user_id()
+    
+    # Check if we need to reinitialize for a different user
+    if "current_user_id" not in st.session_state or st.session_state.current_user_id != current_user_id:
+        # Clear all session state except auth-related keys
+        keys_to_preserve = {'auth_manager', 'authenticated', 'user_info', 'session_token', 'auth_page'}
+        keys_to_remove = [key for key in st.session_state.keys() if key not in keys_to_preserve]
+        for key in keys_to_remove:
+            del st.session_state[key]
+        
+        # Set current user ID
+        st.session_state.current_user_id = current_user_id
+        
+        # Initialize database manager with user ID
+        st.session_state.db_manager = DatabaseManager(user_id=current_user_id)
+        
+        # Initialize app state
         st.session_state.initialized = True
-
-        # Load app state from database
         app_state = st.session_state.db_manager.get_app_state()
         if app_state:
             st.session_state.vectorstore_ready = app_state["vectorstore_ready"]
@@ -173,6 +178,15 @@ def main():
         st.session_state.current_page = "Upload Documents"
         st.session_state.messages_loaded = False
         st.session_state.show_session_manager = False
+
+
+def main():
+    # Check authentication first
+    if not show_auth_page():
+        return  # If not authenticated, show auth page and return
+
+    # User is authenticated, initialize user-specific session
+    initialize_user_session()
 
     st.markdown(
         '<h1 class="main-header">🎓 EduAI: AI Tutor</h1>', unsafe_allow_html=True
