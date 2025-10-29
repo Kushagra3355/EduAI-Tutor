@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph
 from typing import TypedDict, List, Iterator, Dict
 from langchain_community.vectorstores import FAISS
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_openai import OpenAIEmbeddings
 
 
@@ -117,3 +117,4 @@ Now generate the notes below:
 
         state["response"] = full_response
         yield {"state": state}
+
