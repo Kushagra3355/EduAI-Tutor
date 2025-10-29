@@ -21,6 +21,17 @@ def init_auth_state():
             st.session_state.user_info = user_info
 
 
+def clear_user_data():
+    """Clear all user-specific data from session state"""
+    # List of keys to preserve during logout
+    preserve_keys = {'auth_manager', 'authenticated', 'user_info', 'auth_page'}
+    
+    # Remove all user data except authentication-related keys
+    keys_to_remove = [key for key in st.session_state.keys() if key not in preserve_keys]
+    for key in keys_to_remove:
+        del st.session_state[key]
+
+
 def login_page():
     """Display login page"""
     
@@ -85,6 +96,9 @@ def login_page():
                         )
 
                         if result["success"]:
+                            # Clear any previous user's data before setting new user
+                            clear_user_data()
+                            
                             st.session_state.authenticated = True
                             st.session_state.user_info = result
                             st.session_state.session_token = result["session_token"]
@@ -202,7 +216,6 @@ def signup_page():
 
                         if result["success"]:
                             st.success("✅ Account created successfully!")
-                            st.balloons()
                             st.info("🔐 Redirecting to login page...")
                             # Automatically switch to login page after 2 seconds
                             import time
@@ -337,7 +350,17 @@ def logout_user():
         st.session_state.auth_manager.logout(st.session_state.session_token)
         del st.session_state.session_token
 
+    # Clear all user data
+    clear_user_data()
+    
     st.session_state.authenticated = False
     st.session_state.user_info = None
     st.session_state.auth_page = "login"
     st.rerun()
+
+
+def get_current_user_id():
+    """Get the current authenticated user's ID"""
+    if st.session_state.authenticated and st.session_state.user_info:
+        return st.session_state.user_info.get('user_id')
+    return None
