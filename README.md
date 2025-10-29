@@ -10,12 +10,14 @@ Features:
 3. MCQ Generation: Automatically generate multiple-choice questions for self-assessment
 4. Study Notes Creation: Convert PDF content into well-structured, bullet-pointed study notes
 5. Vector-based Search: Uses FAISS for efficient similarity search and content retrieval
+6. Allows multiple sessions and resume chat feature for future queries by users.
 
 Architecture:
 
 The application uses a graph-based approach with LangGraph for processing workflows:
 
 Document Ingestion: PDFs are chunked and embedded into a FAISS vector store
+
 Query Processing: User queries are processed through retrieval-augmented generation (RAG)
 Content Generation: Three specialized modules handle different educational tasks
 
