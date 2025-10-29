@@ -54,16 +54,6 @@ def login_page():
             unsafe_allow_html=True,
         )
 
-        # Login form card
-        st.markdown(
-            """
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        padding: 2px; border-radius: 12px; margin-bottom: 1rem;">
-                <div style="background-color: #1f2937; padding: 2.5rem; border-radius: 10px;">
-            """,
-            unsafe_allow_html=True,
-        )
-
         with st.form("login_form", clear_on_submit=False):
             st.markdown('<h3 style="text-align: center;">Sign In</h3>', unsafe_allow_html=True)
             
@@ -103,8 +93,6 @@ def login_page():
                         else:
                             st.error(f"❌ {result['error']}")
 
-        st.markdown("</div></div>", unsafe_allow_html=True)
-
         # Divider
         st.markdown(
             """
@@ -139,16 +127,6 @@ def signup_page():
                 <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">Join EduAI</h1>
                 <p style="font-size: 1.1rem; color: #9ca3af;">Start your learning journey today</p>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Signup form card
-        st.markdown(
-            """
-            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-                        padding: 2px; border-radius: 12px; margin-bottom: 1rem;">
-                <div style="background-color: #1f2937; padding: 2.5rem; border-radius: 10px;">
             """,
             unsafe_allow_html=True,
         )
@@ -212,8 +190,6 @@ def signup_page():
                             st.rerun()
                         else:
                             st.error(f"❌ {result['error']}")
-
-        st.markdown("</div></div>", unsafe_allow_html=True)
 
         # Divider
         st.markdown(
