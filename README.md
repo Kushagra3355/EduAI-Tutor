@@ -1,34 +1,155 @@
-# EduAI-Tutor
+# 🎓 EduAI – AI-Powered Learning Assistant
 
-AI Study Assistant
+EduAI is an interactive **AI-powered study assistant** built with **Streamlit**, **LangChain**, **LangGraph**, and **OpenAI models**.  
+It allows users to upload PDF study materials and then:
 
-An intelligent AI-powered educational assistant that transforms PDF documents into interactive learning experiences. Upload study materials and get instant Q&A, auto-generated MCQs, and comprehensive study notes.
-Features:
+- Ask intelligent, context-aware questions  
+- Generate structured study notes  
+- Create exam-ready multiple-choice questions (MCQs)  
+- Manage multiple learning sessions with persistent memory  
 
-1. PDF Document Processing: Upload and index PDF documents for intelligent content retrieval
-2. Interactive Q&A: Ask questions about your study materials and get contextual answers
-3. MCQ Generation: Automatically generate multiple-choice questions for self-assessment
-4. Study Notes Creation: Convert PDF content into well-structured, bullet-pointed study notes
-5. Vector-based Search: Uses FAISS for efficient similarity search and content retrieval
-6. Allows multiple sessions and resume chat feature for future queries by users.
+The system uses **Retrieval-Augmented Generation (RAG)** with **FAISS vector search** and **SQLite** for persistent storage.
 
-Architecture:
+---
 
-The application uses a graph-based approach with LangGraph for processing workflows:
+## 📚 Table of Contents
 
-Document Ingestion: PDFs are chunked and embedded into a FAISS vector store
+- Features  
+- Project Structure  
+- Installation  
+- Configuration  
+- Usage  
+- Core Components  
+- Database Design  
+- Technologies Used  
+- Troubleshooting  
+- Future Enhancements  
+- License  
 
-Query Processing: User queries are processed through retrieval-augmented generation (RAG)
-Content Generation: Three specialized modules handle different educational tasks
+---
 
-Future Enhancements:
+## ✨ Features
 
--FastAPI for backend
--Multi-language support
--Sign in / Sign up feature
+- 📤 Upload multiple PDF documents  
+- 🔎 Semantic document-based question answering  
+- 📝 Automatic study notes generation  
+- 📋 MCQ generation with answer keys  
+- 💬 Streaming AI responses  
+- 🗂️ Session-based learning with history  
+- 💾 Persistent storage using SQLite  
+- 🎨 Modern dark-themed Streamlit UI  
 
-How to run:
+---
 
-1. Download the repo in your systems
-2. Add your OpenAI API key in the .env file
-3. In the terminal window hit - > "streamlit run app.py"
+## 🏗 Project Structure
+
+EduAI/
+│
+├── app.py                  # Main Streamlit application  
+├── build_vectorstore.py    # PDF embedding and FAISS index creation  
+├── DocQA.py                # Retrieval-Augmented Q&A system  
+├── Notes.py                # Study notes generator  
+├── MCQs.py                 # MCQ generator  
+├── database.py             # SQLite database manager  
+├── auth_manager.py         # (Optional) Authentication logic  
+├── auth_pages.py           # (Optional) Login & signup UI  
+├── faiss_index_local/      # Generated FAISS vector store  
+└── eduai_data.db           # SQLite database (auto-generated)  
+
+---
+
+## ⚙️ Installation
+
+### 1. Clone the Repository
+git clone https://github.com/your-username/eduai.git  
+cd eduai  
+
+### 2. Create a Virtual Environment
+python -m venv venv  
+source venv/bin/activate  
+
+### 3. Install Dependencies
+pip install -r requirements.txt  
+
+---
+
+## 🔐 Configuration
+
+Set your OpenAI API key:
+
+export OPENAI_API_KEY="your-api-key"
+
+or using Streamlit secrets:
+
+OPENAI_API_KEY="your-api-key"
+
+---
+
+## 🚀 Usage
+
+Run the application:
+
+streamlit run app.py
+
+1. Upload PDF documents  
+2. Process documents  
+3. Ask questions / Generate notes / Create MCQs  
+4. Download generated content  
+
+---
+
+## 🧠 Core Components
+
+- **Document Q&A** – Context-aware question answering using FAISS + LLM  
+- **Notes Generator** – Structured academic notes generation  
+- **MCQ Generator** – Exam-ready multiple-choice questions  
+- **Database Manager** – Persistent session & content storage  
+
+---
+
+## 🗃 Database Design
+
+Tables:
+- sessions  
+- conversations  
+- documents  
+- generated_content  
+- app_state  
+
+---
+
+## 🧰 Technologies Used
+
+- Streamlit  
+- LangChain & LangGraph  
+- OpenAI GPT Models  
+- FAISS  
+- SQLite  
+- Python  
+
+---
+
+## 🛠 Troubleshooting
+
+- Ensure documents are uploaded before querying  
+- Verify OpenAI API key  
+- Large PDFs may take time to process  
+
+---
+
+## 🚧 Future Enhancements
+
+- User authentication  
+- Support for DOCX/TXT  
+- Cloud vector storage  
+- Multi-user support  
+
+---
+
+## 📄 License
+
+MIT License  
+
+---
+
+Happy Learning with EduAI 🎓
