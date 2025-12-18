@@ -1,37 +1,45 @@
-# ⚖️ LegalEase AI – AI-Powered Legal Assistant
+# 🎓 EduAI – AI-Powered Learning Assistant
 
-LegalEase AI is an **AI-powered legal assistant for Indian law**, built using **Streamlit**, **LangChain**, **LangGraph**, **FAISS**, and **OpenAI models**.  
-It helps users understand legal concepts, Bare Acts, and legal documents through **context-aware, explainable, and source-cited responses**.
+EduAI is an **AI-powered learning assistant** built using **Streamlit**, **LangChain**, **LangGraph**, **FAISS**, and **OpenAI models**.  
+It helps students learn more effectively by allowing them to upload study materials (PDFs) and then:
 
-> ⚠️ **Disclaimer:** LegalEase AI is for educational and informational purposes only. It does **not** provide legal advice.
+- Ask questions based on the content
+- Generate structured study notes
+- Create practice MCQs
+- Maintain learning sessions with persistent memory
+
+EduAI uses **Retrieval-Augmented Generation (RAG)** to ensure answers are grounded in the uploaded documents.
 
 ---
 
 ## 📚 Features
 
-- ⚖️ **NyayGPT** – Ask questions about Indian law and legal procedures  
-- 📄 **Ask Document** – Upload and analyze legal PDF documents  
-- 🔍 **Bare Act Retrieval** using FAISS vector search  
-- 🧠 Retrieval-Augmented Generation (RAG)  
+- 📤 Upload multiple PDF study documents  
+- 🔎 Context-aware Question Answering  
+- 📝 Automatic study notes generation  
+- 📋 MCQ generation with answer keys  
 - 💬 Streaming AI responses  
-- 📚 Source-aware explanations (Act / Section references)  
-- 🎨 Clean, minimal Streamlit UI  
+- 🗂️ Session management with history  
+- 💾 Persistent storage using SQLite  
+- 🎨 Modern dark-themed Streamlit UI  
 
 ---
 
 ## 🏗️ Project Structure
 
 ```
-LegalEase-AI/
+EduAI/
 │
-├── main.py                   # Streamlit application entry point
-├── embed_docs.py             # Optimized Bare Act PDF embedding & FAISS index creation
-├── LegalChatBot.py           # NyayGPT (legal Q&A chatbot)
-├── DocumentQAGraph.py        # Ask Document tool with RAG pipeline
-├── bare_act_retriever.py     # FAISS-based Bare Act retriever
-├── faiss_index_legal/        # Generated FAISS index (required at runtime)
-├── .env                      # Environment variables (OpenAI API key)
-└── requirements.txt          # Python dependencies
+├── app.py                   # Main Streamlit application
+├── build_vectorstore.py     # PDF embedding & FAISS index builder
+├── DocQA.py                 # Document-based Q&A system (RAG)
+├── Notes.py                 # Study notes generator
+├── MCQs.py                  # MCQ generator
+├── database.py              # SQLite database manager
+├── auth_manager.py          # (Optional) Authentication logic
+├── auth_pages.py            # (Optional) Login & Signup UI
+├── faiss_index_local/       # Generated FAISS vector store
+└── eduai_data.db            # SQLite database (auto-created)
 ```
 
 ---
@@ -40,14 +48,14 @@ LegalEase-AI/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Kushagra3355/LegalEase-AI.git
-cd LegalEase-AI
+git clone https://github.com/Kushagra3355/EduAI.git
+cd EduAI
 ```
 
 ### 2. Create a Virtual Environment (Recommended)
 ```bash
 python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+source venv/bin/activate     # Windows: venv\Scripts\activate
 ```
 
 ### 3. Install Dependencies
@@ -61,56 +69,73 @@ pip install -r requirements.txt
 
 ### OpenAI API Key
 
-Create a `.env` file in the project root:
+EduAI requires an OpenAI API key.
 
-```env
-OPENAI_API_KEY=your-openai-api-key
+#### Option 1: Environment Variable
+```bash
+export OPENAI_API_KEY="your-api-key"
 ```
 
-For **Streamlit Cloud**, add the key under:
-**Settings → Secrets**
+#### Option 2: Streamlit Secrets
+Create `.streamlit/secrets.toml`:
+```toml
+OPENAI_API_KEY="your-api-key"
+```
 
 ---
 
-## 🧠 Creating the FAISS Index (Mandatory)
+## 🧠 Building the Vector Store
 
-Before running the app, you **must generate the FAISS vector store** from Bare Act PDFs:
+Before asking questions or generating content, upload PDFs and process them inside the app.
 
-```bash
-python embed_docs.py
-```
+Internally, EduAI:
+- Splits documents into chunks
+- Creates embeddings using OpenAI
+- Stores vectors locally using FAISS
 
-This command:
-- Loads Bare Act PDFs
-- Cleans and deduplicates text
-- Creates optimized embeddings
-- Saves the FAISS index to `faiss_index_legal/`
-
-> ⚠️ Ensure `faiss_index_legal/` exists before running the app.
+The index is saved in `faiss_index_local/`.
 
 ---
 
 ## 🚀 Running the Application
 
 ```bash
-streamlit run main.py
+streamlit run app.py
 ```
 
 ---
 
-## 🧩 Application Modes
+## 🧩 Application Pages
 
-### ⚖️ NyayGPT
-- Ask questions about Indian law
-- Retrieves relevant Bare Act sections
-- Provides concise, easy-to-understand explanations
-- Always cites sources
-- Never gives legal advice
+### 📤 Upload Documents
+- Upload one or more PDFs
+- Build a searchable knowledge base
 
-### 📄 Ask Document
-- Upload legal PDFs (judgments, contracts, notices)
-- Ask questions based on uploaded documents
-- Combines document context with Bare Act references
+### 💬 Ask Questions
+- Ask questions based on uploaded content
+- Get streaming, context-aware answers
+
+### 📝 Generate Notes
+- Create structured study notes
+- Download notes as `.txt` files
+
+### 📋 Create MCQs
+- Generate 10 MCQs with 4 options each
+- Includes a complete answer key
+
+---
+
+## 🗄️ Database Design
+
+EduAI uses SQLite to store:
+
+- Chat conversations
+- Application state
+- Uploaded document metadata
+- Generated notes and MCQs
+- Session information
+
+Each session maintains its own learning context.
 
 ---
 
@@ -121,31 +146,31 @@ streamlit run main.py
 - **Embeddings**: text-embedding-3-small  
 - **Vector Store**: FAISS  
 - **Orchestration**: LangGraph  
-- **Backend**: Python  
+- **Database**: SQLite  
+- **Language**: Python  
 
 ---
 
 ## 🛠 Troubleshooting
 
-**FAISS index not found**
-- Run `python embed_docs.py`
-- Ensure `faiss_index_legal/` exists
+**Documents not processed**
+- Upload PDFs before using other features
 
-**OpenAI API error**
-- Verify API key in `.env` or Streamlit secrets
+**OpenAI API errors**
+- Verify API key configuration
 
-**Large FAISS index**
-- Use Git LFS or external storage if index exceeds GitHub limits
+**Slow processing**
+- Large PDFs may take longer to embed
 
 ---
 
 ## 🚧 Future Enhancements
 
-- Multi-language legal support  
-- Case law and judgment database integration  
-- User authentication  
-- Cloud-hosted vector database  
-- Highlighted PDF citations  
+- User authentication (already scaffolded)
+- Support for DOCX / TXT files
+- Cloud-hosted vector storage
+- Multi-user collaboration
+- Progress tracking
 
 ---
 
@@ -162,4 +187,4 @@ GitHub: https://github.com/Kushagra3355
 
 ---
 
-⚖️ *LegalEase AI – Making Indian law more accessible, one question at a time.*
+🎓 *EduAI – Learn smarter, not harder.*
