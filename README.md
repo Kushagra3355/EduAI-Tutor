@@ -61,7 +61,7 @@ EduAI/
 ## ⚙️ Installation
 
 ### 1. Clone the Repository
-git clone https://github.com/kushagra3355/eduai.git  
+git clone https://github.com/Kushagra3355/EduAI-Tutor.git
 cd eduai  
 
 ### 2. Create a Virtual Environment
