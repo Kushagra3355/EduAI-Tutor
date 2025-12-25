@@ -7,7 +7,10 @@ from utils.DocQA import DocumentQA
 from utils.MCQs import mcqs_generator
 from utils.Notes import notes_generator
 from database.database import DatabaseManager
-import time
+import sys
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -697,6 +700,7 @@ def create_mcqs_page():
 
 if __name__ == "__main__":
     main()
+
 
 
 
