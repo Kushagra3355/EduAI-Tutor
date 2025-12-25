@@ -18,7 +18,7 @@ except FileNotFoundError:
 
 st.set_page_config(
     page_title="EduAI - AI-Powered Learning Assistant",
-    page_icon="ðŸ“š",
+    page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -191,7 +191,7 @@ def load_session(session_id: str):
 
 def main():
     st.markdown(
-        '<h1 class="main-header">ðŸŽ“ EduAI: AI Tutor</h1>', unsafe_allow_html=True
+        '<h1 class="main-header">🎓 EduAI: AI Tutor</h1>', unsafe_allow_html=True
     )
     st.markdown(
         '<p class="sub-header">Your AI-Powered Learning Assistant</p>',
@@ -212,12 +212,12 @@ def main():
         st.subheader("System Status")
         if st.session_state.vectorstore_ready:
             st.markdown(
-                '<div class="status-ready">âœ“ Documents loaded and ready</div>',
+                '<div class="status-ready">✓ Documents loaded and ready</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<div class="status-pending">âš  Please upload documents first</div>',
+                '<div class="status-pending">⚠ Please upload documents first</div>',
                 unsafe_allow_html=True,
             )
 
@@ -226,7 +226,7 @@ def main():
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("ðŸ”„ Clear Chat", use_container_width=True):
+            if st.button("🔄 Clear Chat", use_container_width=True):
                 st.session_state.db_manager.clear_conversation()
                 st.session_state.messages = []
                 st.session_state.messages_loaded = False
@@ -234,7 +234,7 @@ def main():
                 st.rerun()
 
         with col2:
-            if st.button("ðŸ—‘ï¸ Reset Session", use_container_width=True):
+            if st.button("🗑️ Reset Session", use_container_width=True):
                 st.session_state.db_manager.delete_session()
                 st.session_state.vectorstore_ready = False
                 st.session_state.chat_state = None
@@ -251,7 +251,7 @@ def main():
                 st.success("Session reset!")
                 st.rerun()
 
-        if st.button("ðŸ“‚ Manage Sessions", use_container_width=True):
+        if st.button("📂 Manage Sessions", use_container_width=True):
             st.session_state.show_session_manager = (
                 not st.session_state.show_session_manager
             )
@@ -266,7 +266,7 @@ def main():
             sessions = st.session_state.db_manager.get_all_sessions()
 
             # New Session button
-            if st.button("âž• New Session", use_container_width=True, type="primary"):
+            if st.button("➕ New Session", use_container_width=True, type="primary"):
                 import time
                 new_session_id = f"session_{int(time.time() * 1000000)}"
                 st.session_state.db_manager.create_session(
@@ -284,7 +284,7 @@ def main():
 
                 # Display session name and message count
                 display_name = session["session_name"]
-                button_label = f"{'â–¶ ' if is_active else ''}{display_name}"
+                button_label = f"{'▶ ' if is_active else ''}{display_name}"
                 if session["message_count"] > 0:
                     button_label += f" ({session['message_count']} msgs)"
 
@@ -300,7 +300,7 @@ def main():
                 
                 with col2:
                     if not is_active:
-                        if st.button("ðŸ—‘ï¸", key=f"delete_{session['session_id']}", use_container_width=True):
+                        if st.button("🗑️", key=f"delete_{session['session_id']}", use_container_width=True):
                             st.session_state.db_manager.delete_session(session["session_id"])
                             st.rerun()
 
@@ -316,7 +316,7 @@ def main():
 
 
 def upload_documents_page():
-    st.header("ðŸ“¤ Upload Your Study Documents")
+    st.header("📤 Upload Your Study Documents")
 
     st.markdown(
         """
@@ -338,7 +338,7 @@ def upload_documents_page():
         st.markdown("### Previously Uploaded Documents")
         with st.expander("View document history"):
             for doc in uploaded_docs:
-                st.write(f"â€¢ {doc['filename']} ({doc['file_size']} bytes)")
+                st.write(f"• {doc['filename']} ({doc['file_size']} bytes)")
 
     uploaded_files = st.file_uploader(
         "Choose PDF files",
@@ -352,7 +352,7 @@ def upload_documents_page():
 
         with st.expander("View uploaded files"):
             for file in uploaded_files:
-                st.write(f"â€¢ {file.name} ({file.size} bytes)")
+                st.write(f"• {file.name} ({file.size} bytes)")
 
         if st.button("Process Documents", type="primary"):
             process_documents(uploaded_files)
@@ -403,7 +403,7 @@ def process_documents(uploaded_files):
         st.markdown(
             """
         <div class="success-message">
-            <h4>âœ“ Success!</h4>
+            <h4>✓ Success!</h4>
             <p>Documents have been processed and indexed successfully. You can now:</p>
             <ul>
                 <li>Ask questions about your documents</li>
@@ -423,13 +423,13 @@ def process_documents(uploaded_files):
 
 
 def ask_questions_page():
-    st.header("ðŸ’¬ Ask Questions About Your Documents")
+    st.header("💬 Ask Questions About Your Documents")
 
     if not st.session_state.vectorstore_ready:
         st.markdown(
             """
         <div class="warning-message">
-            <h4>âš  No Documents Loaded</h4>
+            <h4>⚠ No Documents Loaded</h4>
             <p>Please upload and process documents first using the "Upload Documents" page.</p>
         </div>
         """,
@@ -494,7 +494,7 @@ def ask_questions_page():
                     if "response_chunk" in chunk:
                         full_response += chunk["response_chunk"]
                         message_placeholder.markdown(
-                            f'<div class="chat-message assistant-message"><strong>Assistant:</strong> {full_response}â–Œ</div>',
+                            f'<div class="chat-message assistant-message"><strong>Assistant:</strong> {full_response}▌</div>',
                             unsafe_allow_html=True,
                         )
                     elif "state" in chunk:
@@ -529,13 +529,13 @@ def ask_questions_page():
 
 
 def generate_notes_page():
-    st.header("ðŸ“ Generate Study Notes")
+    st.header("📝 Generate Study Notes")
 
     if not st.session_state.vectorstore_ready:
         st.markdown(
             """
         <div class="warning-message">
-            <h4>âš  No Documents Loaded</h4>
+            <h4>⚠ No Documents Loaded</h4>
             <p>Please upload and process documents first using the "Upload Documents" page.</p>
         </div>
         """,
@@ -569,7 +569,7 @@ def generate_notes_page():
         st.markdown(existing_notes)
 
         st.download_button(
-            label="ðŸ“¥ Download Notes",
+            label="📥 Download Notes",
             data=existing_notes,
             file_name="study_notes.txt",
             mime="text/plain",
@@ -577,7 +577,7 @@ def generate_notes_page():
 
         st.markdown("---")
 
-    if st.button("ðŸ”„ Generate New Notes", type="primary"):
+    if st.button("🔄 Generate New Notes", type="primary"):
         message_placeholder = st.empty()
         full_response = ""
 
@@ -589,7 +589,7 @@ def generate_notes_page():
                 for chunk in notes_gen.run_stream(state):
                     if "response_chunk" in chunk:
                         full_response += chunk["response_chunk"]
-                        message_placeholder.markdown(f"{full_response}â–Œ")
+                        message_placeholder.markdown(f"{full_response}▌")
 
                 message_placeholder.markdown(full_response)
 
@@ -601,7 +601,7 @@ def generate_notes_page():
                 st.success("Notes generated successfully!")
 
                 st.download_button(
-                    label="ðŸ“¥ Download Notes",
+                    label="📥 Download Notes",
                     data=full_response,
                     file_name="study_notes.txt",
                     mime="text/plain",
@@ -612,13 +612,13 @@ def generate_notes_page():
 
 
 def create_mcqs_page():
-    st.header("ðŸ“‹ Create Practice MCQs")
+    st.header("📋 Create Practice MCQs")
 
     if not st.session_state.vectorstore_ready:
         st.markdown(
             """
         <div class="warning-message">
-            <h4>âš  No Documents Loaded</h4>
+            <h4>⚠ No Documents Loaded</h4>
             <p>Please upload and process documents first using the "Upload Documents" page.</p>
         </div>
         """,
@@ -652,7 +652,7 @@ def create_mcqs_page():
         st.markdown(existing_mcqs)
 
         st.download_button(
-            label="ðŸ“¥ Download MCQs",
+            label="📥 Download MCQs",
             data=existing_mcqs,
             file_name="practice_mcqs.txt",
             mime="text/plain",
@@ -660,7 +660,7 @@ def create_mcqs_page():
 
         st.markdown("---")
 
-    if st.button("ðŸ”„ Generate New MCQs", type="primary"):
+    if st.button("🔄 Generate New MCQs", type="primary"):
         message_placeholder = st.empty()
         full_response = ""
 
@@ -672,7 +672,7 @@ def create_mcqs_page():
                 for chunk in mcq_gen.run_stream(state):
                     if "response_chunk" in chunk:
                         full_response += chunk["response_chunk"]
-                        message_placeholder.markdown(f"{full_response}â–Œ")
+                        message_placeholder.markdown(f"{full_response}▌")
 
                 message_placeholder.markdown(full_response)
 
@@ -684,7 +684,7 @@ def create_mcqs_page():
                 st.success("MCQs generated successfully!")
 
                 st.download_button(
-                    label="ðŸ“¥ Download MCQs",
+                    label="📥 Download MCQs",
                     data=full_response,
                     file_name="practice_mcqs.txt",
                     mime="text/plain",
