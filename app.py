@@ -6,11 +6,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import streamlit as st
 import tempfile
 from pathlib import Path
-from database.build_vectorstore import embed_docs
+from db.build_vectorstore import embed_docs
 from utils.DocQA import DocumentQA
 from utils.MCQs import mcqs_generator
 from utils.Notes import notes_generator
-from database.database_mang import DatabaseManager
+from db.mg_database import DatabaseManager
 
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -700,6 +700,7 @@ def create_mcqs_page():
 
 if __name__ == "__main__":
     main()
+
 
 
 
