@@ -1,8 +1,9 @@
-import streamlit as st
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+
+import streamlit as st
 import tempfile
 from pathlib import Path
 from database.build_vectorstore import embed_docs
@@ -699,6 +700,7 @@ def create_mcqs_page():
 
 if __name__ == "__main__":
     main()
+
 
 
 
