@@ -2,11 +2,12 @@ import streamlit as st
 import os
 import tempfile
 from pathlib import Path
-from build_vectorstore import embed_docs
+from database.build_vectorstore import embed_docs
 from utils.DocQA import DocumentQA
 from utils.MCQs import mcqs_generator
 from utils.Notes import notes_generator
 from database.database import DatabaseManager
+import time
 
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -696,5 +697,6 @@ def create_mcqs_page():
 
 if __name__ == "__main__":
     main()
+
 
 
