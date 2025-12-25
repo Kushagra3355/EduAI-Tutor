@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import tempfile
 from pathlib import Path
-from database.build_vectorstore import embed_docs
+from build_vectorstore import embed_docs
 from utils.DocQA import DocumentQA
 from utils.MCQs import mcqs_generator
 from utils.Notes import notes_generator
@@ -700,6 +700,7 @@ def create_mcqs_page():
 
 if __name__ == "__main__":
     main()
+
 
 
 
