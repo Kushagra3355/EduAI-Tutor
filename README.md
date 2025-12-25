@@ -1,5 +1,7 @@
 # 🎓 EduAI – AI-Powered Learning Assistant
 
+🚀 Live Demo: https://eduai-tutor.streamlit.app/
+
 EduAI is an **AI-powered learning assistant** built using **Streamlit**, **LangChain**, **LangGraph**, **FAISS**, and **OpenAI models**.  
 It helps students learn more effectively by allowing them to upload study materials (PDFs) and then:
 
@@ -28,18 +30,25 @@ EduAI uses **Retrieval-Augmented Generation (RAG)** to ensure answers are ground
 ## 🏗️ Project Structure
 
 ```
-EduAI/
+eduai-tutor/
 │
-├── app.py                   # Main Streamlit application
-├── build_vectorstore.py     # PDF embedding & FAISS index builder
-├── DocQA.py                 # Document-based Q&A system (RAG)
-├── Notes.py                 # Study notes generator
-├── MCQs.py                  # MCQ generator
-├── database.py              # SQLite database manager
-├── auth_manager.py          # (Optional) Authentication logic
-├── auth_pages.py            # (Optional) Login & Signup UI
-├── faiss_index_local/       # Generated FAISS vector store
-└── eduai_data.db            # SQLite database (auto-created)
+├── app.py
+├── .env
+│
+├── db/
+│   ├── __init__.py
+│   ├── build_vectorstore.py
+│   ├── mg_database.py
+│   └── migrate_database.py
+│
+├── utils/
+│   ├── DocQA.py
+│   ├── Notes.py
+│   └── MCQs.py
+│
+├── requirements.txt
+└── README.md
+
 ```
 
 ---
@@ -171,12 +180,6 @@ Each session maintains its own learning context.
 - Cloud-hosted vector storage
 - Multi-user collaboration
 - Progress tracking
-
----
-
-## 📄 License
-
-MIT License
 
 ---
 
